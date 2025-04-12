@@ -1,0 +1,78 @@
+---
+title: "pL2003_OriginalHomeworkCode_04"
+output: html_document
+date: "2025-03-31"
+---
+
+```{r}
+#load libraries 
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(boot)
+
+```
+
+```{r}
+data <- read.csv("/Users/kacylin/Desktop/KamilarAndCooperData.csv")
+head(data)
+```
+
+```{r}
+# Log-transform the homerange columns
+data$log_HomeRange <- log(data$HomeRange_km2)
+data$log_BodyMass <- log(data$Body_mass_female_mean)
+
+# Fit the linear model
+model <- lm(log_HomeRange ~ log_BodyMass, data = data)
+
+# View coefficients
+summary(model)$coefficients
+```
+
+The Intercept when log(BodyMass) is 0, the predicted log (HomeRange) is -9.44 
+
+The slope shows that for every one unit increase in log(BodyMass), log (HomeRange) increases by 1.04
+
+```{r}
+#Bootstrapping regression coefficients
+boot_intercepts <- NULL
+boot_slopes <- NULL
+n <- nrow(data)
+
+set.seed(123)  # for reproducibility
+
+for (i in 1:1000) {
+  boot_sample <- data[sample(n, replace = TRUE), ]
+  boot_model <- lm(log_HomeRange ~ log_BodyMass, data = boot_sample)
+  
+  boot_intercepts[i] <- coef(boot_model)[1] 
+  boot_slopes[i] <- coef(boot_model)[2]
+}
+
+# Standard Errors for intercept and slope 
+se_intercept <- sd(boot_intercepts)
+se_slope <- sd(boot_slopes)
+
+# Calculating 95% Confidence Intervals
+ci_intercept <- quantile(boot_intercepts, c(0.025, 0.975))
+ci_slope <- quantile(boot_slopes, c(0.025, 0.975))
+
+# Results
+se_intercept
+se_slope
+ci_intercept
+ci_slope
+```
+How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()
+
+The bootstrapped standard errors for both the intercept and slope are slightly lower than those estimated by lm(). This is expected, as bootstrapping captures variability based on the actual resampling of the data, while lm() assumes normality and constant variance. The small difference suggests that the model assumptions are reasonable and that both methods provide consistent estimates.
+
+```{r}
+confint(model, level = 0.95)
+```
+
+How does the latter compare to the 95% CI estimated from your entire dataset?
+
+The bootstrapped 95% confidence intervals are very similar to those produced by the lm() model. This supports the accuracy of the model-based intervals and shows that the linear model assumptions hold well for this dataset. Bootstrapping offers an additional way to verify those results.
+
